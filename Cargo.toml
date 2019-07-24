@@ -1,0 +1,8 @@
+[package]
+name = "rust-opc"
+version = "0.1.0"
+authors = ["Jonathan Roeber <r734@fastmail.com>"]
+edition = "2018"
+
+[dependencies]
+palette = "0.4.1"
