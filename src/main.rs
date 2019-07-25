@@ -11,23 +11,11 @@ fn main() {
     let num_pixels = 240;
     let packet_size = 4 + (num_pixels * 3);
 
+    let mut pixels: Vec<Color> = vec![Color::default(); num_pixels];
     let mut payload: Vec<u8> = vec![0u8; packet_size];
 
-    payload[0] = 0x01; // Channel 1
-    payload[1] = 0x00; // Command 0 (set 8-bit pixel colors)
-    
-    let len: u16 = (num_pixels * 3).try_into().unwrap();
-    payload[2] = (len >> 8) as u8;
-    payload[3] = len as u8;
-
-    let my_rgb: LinSrgb = Hsv::new(155., 1., 0.01).into(); // see https://stackoverflow.com/a/12894053 for Srgb vs LinSrgb
-    let my_u8_rgb: LinSrgb<u8> = my_rgb.into_format();
-
-    for i in (4..packet_size-2).step_by(3) {
-        payload[i] = my_u8_rgb.red;
-        payload[i+1] = my_u8_rgb.green;
-        payload[i+2] = my_u8_rgb.blue;
-    }
+    fill_solid_color(&mut pixels, Hsv::new(150.0, 1.0, 0.1).into());
+    build_payload(&mut payload, pixels);
 
     let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
 
@@ -41,16 +29,27 @@ fn main() {
     }
 }
 
-fn build_payload(pixels: Vec<Hsv>, payload: &mut Vec<u8>) {
+fn fill_solid_color(pixels: &mut Vec<Color>, color: Color) {
+    for i in 0..pixels.len() {
+        pixels[i] = color;
+    }
+}
 
-    // TODO set first four bytes
+fn build_payload(payload: &mut Vec<u8>, pixels: Vec<Color>) {
+
+    payload[0] = 0x01; // Channel 1
+    payload[1] = 0x00; // Command 0 (set 8-bit pixel colors)
+    
+    let len: u16 = (payload.len() - 4).try_into().unwrap(); // asinine but required by OPC
+    payload[2] = (len >> 8) as u8;
+    payload[3] = len as u8;
 
     for (i, pixel) in pixels.iter().enumerate() {
 
         let pixel: LinSrgb = (*pixel).into(); // TODO did I use * right in Rust?
         let pixel: LinSrgb<u8> = pixel.into_format();
 
-        payload[4 + i*3    ] = pixel.red;
+        payload[4 + i*3] = pixel.red;
         payload[4 + i*3 + 1] = pixel.green;
         payload[4 + i*3 + 2] = pixel.blue;
     }
