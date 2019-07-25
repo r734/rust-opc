@@ -15,17 +15,17 @@ fn main() {
     let mut pixels: Vec<Color> = vec![Color::default(); num_pixels];
     let mut payload: Vec<u8> = vec![0u8; packet_size];
 
-    let color1 = Hsv::new(100.0, 1.0, 1.0);
-    let color2 = Hsv::new(200.0, 1.0, 0.0);
+    let color1 = Hsv::new(150.0, 1.0, 0.1);
+    let color2 = Hsv::new(190.0, 1.0, 0.1);
 
-    let interp = Gradient::new(vec![color1, color2]);
+    let interp = Gradient::new(vec![color1, color2, color1]);
     let states: Vec<Hsv> = interp.take(120).collect();
 
     let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
 
     let frame_rate = 30;
     let frame_delay_millis = 1_000 / frame_rate;
-    let frame_delay_millis = time::Duration::from_nanos(frame_delay_millis); // TODO use from_secs_f64 when it's stable
+    let frame_delay_millis = time::Duration::from_millis(frame_delay_millis); // TODO use from_secs_f64 when it's stable
 
     let mut i = 0;
     loop {
