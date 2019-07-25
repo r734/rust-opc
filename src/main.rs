@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 use std::net::UdpSocket;
+use std::{thread, time};
+use palette::Color;
 use palette::LinSrgb;
 use palette::Hsv;
 
@@ -29,5 +31,27 @@ fn main() {
 
     let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
 
-    socket.send_to(&payload, "192.168.0.53:5000").unwrap();
+    let frame_rate = 30;
+    let frame_delay_millis = 1_000 / frame_rate;
+    let frame_delay_millis = time::Duration::from_nanos(frame_delay_millis); // TODO use from_secs_f64 when it's stable
+
+    loop {
+        socket.send_to(&payload, "192.168.0.53:5000").unwrap();
+        thread::sleep(frame_delay_millis);
+    }
+}
+
+fn build_payload(pixels: Vec<Hsv>, payload: &mut Vec<u8>) {
+
+    // TODO set first four bytes
+
+    for (i, pixel) in pixels.iter().enumerate() {
+
+        let pixel: LinSrgb = (*pixel).into(); // TODO did I use * right in Rust?
+        let pixel: LinSrgb<u8> = pixel.into_format();
+
+        payload[4 + i*3    ] = pixel.red;
+        payload[4 + i*3 + 1] = pixel.green;
+        payload[4 + i*3 + 2] = pixel.blue;
+    }
 }
