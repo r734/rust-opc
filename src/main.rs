@@ -4,6 +4,7 @@ use std::{thread, time};
 use palette::Color;
 use palette::LinSrgb;
 use palette::Hsv;
+use palette::Gradient;
 
 // The beginning of an OpenPixelControl client in Rust
 
@@ -14,8 +15,11 @@ fn main() {
     let mut pixels: Vec<Color> = vec![Color::default(); num_pixels];
     let mut payload: Vec<u8> = vec![0u8; packet_size];
 
-    fill_solid_color(&mut pixels, Hsv::new(150.0, 1.0, 0.1).into());
-    build_payload(&mut payload, pixels);
+    let color1 = Hsv::new(100.0, 1.0, 1.0);
+    let color2 = Hsv::new(200.0, 1.0, 0.0);
+
+    let interp = Gradient::new(vec![color1, color2]);
+    let states: Vec<Hsv> = interp.take(120).collect();
 
     let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
 
@@ -23,8 +27,16 @@ fn main() {
     let frame_delay_millis = 1_000 / frame_rate;
     let frame_delay_millis = time::Duration::from_nanos(frame_delay_millis); // TODO use from_secs_f64 when it's stable
 
+    let mut i = 0;
     loop {
+        let next_color = states[i];
+
+        fill_solid_color(&mut pixels, next_color.into());
+        build_payload(&mut payload, &pixels);
+
         socket.send_to(&payload, "192.168.0.53:5000").unwrap();
+
+        i = (i + 1) % 120;
         thread::sleep(frame_delay_millis);
     }
 }
@@ -35,7 +47,7 @@ fn fill_solid_color(pixels: &mut Vec<Color>, color: Color) {
     }
 }
 
-fn build_payload(payload: &mut Vec<u8>, pixels: Vec<Color>) {
+fn build_payload(payload: &mut Vec<u8>, pixels: &Vec<Color>) {
 
     payload[0] = 0x01; // Channel 1
     payload[1] = 0x00; // Command 0 (set 8-bit pixel colors)
@@ -46,7 +58,7 @@ fn build_payload(payload: &mut Vec<u8>, pixels: Vec<Color>) {
 
     for (i, pixel) in pixels.iter().enumerate() {
 
-        let pixel: LinSrgb = (*pixel).into(); // TODO did I use * right in Rust?
+        let pixel: LinSrgb = (*pixel).into();
         let pixel: LinSrgb<u8> = pixel.into_format();
 
         payload[4 + i*3] = pixel.red;
