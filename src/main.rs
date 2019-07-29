@@ -10,7 +10,7 @@ fn main() -> std::io::Result<()> {
     HttpServer::new(|| App::new().service(
         web::resource("/set_hsv/{h}/{s}/{v}").to(set_hsv))
     )
-        .bind("127.0.0.1:8090")?
+        .bind("0.0.0.0:80")?
         .run()
 }
 
