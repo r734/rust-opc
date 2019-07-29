@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 palette = "0.4.1"
 actix-web = "1.0.5"
+clap = "2.33.0"
