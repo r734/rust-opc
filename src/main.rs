@@ -8,11 +8,12 @@ use clap::App as ClapApp;
 use clap::Arg;
 
 struct AppState {
-    send_socket: UdpSocket
+    send_socket: UdpSocket,
+    send_ip: String
 }
 
 fn main() -> std::io::Result<()> {
-    let matches = ClapApp::new("rust-opc")
+    let _matches = ClapApp::new("rust-opc") // TODO actually use, and remove underscore
         .version("0.0.1")
         .about("Send OpenPixelControl messages")
         .arg(Arg::with_name("ip addr")
@@ -24,7 +25,10 @@ fn main() -> std::io::Result<()> {
         .get_matches();
 
     HttpServer::new(|| App::new()
-        .data(AppState { send_socket: UdpSocket::bind("0.0.0.0:0").unwrap() }) // TODO see https://actix.rs/docs/application/ "Configure" for cleanup
+        .data(AppState {
+            send_socket: UdpSocket::bind("0.0.0.0:0").unwrap(),
+            send_ip: "192.168.0.53:5000".to_string()
+        }) // TODO see https://actix.rs/docs/application/ "Configure" for cleanup
         .service(
             web::resource("/set_hsv/{h}/{s}/{v}").to(set_hsv))
         )
@@ -68,5 +72,5 @@ fn set_hsv(state: web::Data<AppState>, info: web::Path<(f32, f32, f32)>) -> impl
     fill_solid_color(&mut pixels, Hsv::new(info.0, info.1, info.2).into());
     build_payload(&mut payload, &pixels);
 
-    state.send_socket.send_to(&payload, "192.168.0.53:5000").unwrap();
+    state.send_socket.send_to(&payload, &state.send_ip).unwrap();
 }
