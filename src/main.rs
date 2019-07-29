@@ -1,44 +1,17 @@
 use std::convert::TryInto;
 use std::net::UdpSocket;
-use std::{thread, time};
 use palette::Color;
 use palette::LinSrgb;
 use palette::Hsv;
-use palette::Gradient;
+use actix_web::{web, App, Responder, HttpServer};
 
-// The beginning of an OpenPixelControl client in Rust
+fn main() -> std::io::Result<()> {
 
-fn main() {
-    let num_pixels = 240;
-    let packet_size = 4 + (num_pixels * 3);
-
-    let mut pixels: Vec<Color> = vec![Color::default(); num_pixels];
-    let mut payload: Vec<u8> = vec![0u8; packet_size];
-
-    let color1 = Hsv::new(150.0, 1.0, 0.1);
-    let color2 = Hsv::new(190.0, 1.0, 0.1);
-
-    let interp = Gradient::new(vec![color1, color2, color1]);
-    let states: Vec<Hsv> = interp.take(120).collect();
-
-    let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
-
-    let frame_rate = 30;
-    let frame_delay_millis = 1_000 / frame_rate;
-    let frame_delay_millis = time::Duration::from_millis(frame_delay_millis); // TODO use from_secs_f64 when it's stable
-
-    let mut i = 0;
-    loop {
-        let next_color = states[i];
-
-        fill_solid_color(&mut pixels, next_color.into());
-        build_payload(&mut payload, &pixels);
-
-        socket.send_to(&payload, "192.168.0.53:5000").unwrap();
-
-        i = (i + 1) % 120;
-        thread::sleep(frame_delay_millis);
-    }
+    HttpServer::new(|| App::new().service(
+        web::resource("/set_hsv/{h}/{s}/{v}").to(set_hsv))
+    )
+        .bind("127.0.0.1:8090")?
+        .run()
 }
 
 fn fill_solid_color(pixels: &mut Vec<Color>, color: Color) {
@@ -65,4 +38,18 @@ fn build_payload(payload: &mut Vec<u8>, pixels: &Vec<Color>) {
         payload[4 + i*3 + 1] = pixel.green;
         payload[4 + i*3 + 2] = pixel.blue;
     }
+}
+
+fn set_hsv(info: web::Path<(f32, f32, f32)>) -> impl Responder {
+    let num_pixels = 240;
+    let packet_size = 4 + (num_pixels * 3);
+
+    let mut pixels: Vec<Color> = vec![Color::default(); num_pixels];
+    let mut payload: Vec<u8> = vec![0u8; packet_size];
+
+    fill_solid_color(&mut pixels, Hsv::new(info.0, info.1, info.2).into());
+    build_payload(&mut payload, &pixels);
+
+    let socket = UdpSocket::bind("0.0.0.0:34567").unwrap();
+    socket.send_to(&payload, "192.168.0.53:5000").unwrap();
 }
